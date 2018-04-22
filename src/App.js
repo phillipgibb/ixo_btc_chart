@@ -15,8 +15,10 @@ class App extends Component {
         super(props);
         this.toggle = this.toggle.bind(this);
         this.select = this.select.bind(this);
+        this.onPauseUnpause = this.onPauseUnpause.bind(this);
         this.state = {
             loading: 'initial',
+            paused: false,
             dropdownOpen: false,
             refresh_rate: 15,
             segments: 10,
@@ -41,6 +43,16 @@ class App extends Component {
         this.chartObject = null;
     }
 
+    onPauseUnpause = (e) => {
+        e.preventDefault();
+        if(!this.state.paused){
+            clearInterval(this.timerId);
+        }else{
+            this.startTimer();
+        }
+        this.setState({paused: !this.state.paused});
+    };
+
     onSegmentChange = (e) => {
          e.preventDefault();
          const { value } = this.input;
@@ -59,14 +71,13 @@ class App extends Component {
 
     select(event) {
         this.setState({
-          dropdownOpen: !this.state.dropdownOpen,
+        //   dropdownOpen: !this.state.dropdownOpen,
           refresh_rate: event.target.innerText
         });
-        clearInterval(this.timerId);
-        this.timerId = setInterval(
-            () => this.getSpotPrice(),
-            this.state.refresh_rate * 1000
-        );
+        if (this.state.paused){
+            clearInterval(this.timerId);
+            this.startTimer();
+        }
     }
 
     componentWillMount(){
@@ -130,13 +141,16 @@ class App extends Component {
         });
     }
 
-
-    componentDidMount() {
-        this.getSpotPrice();
+    startTimer(){
         this.timerId = setInterval(
             () => this.getSpotPrice(),
             this.state.refresh_rate * 1000
         );
+    }
+
+    componentDidMount() {
+        this.getSpotPrice();
+        this.startTimer();
     }
 
     componentDidUpdate(){
@@ -166,6 +180,9 @@ class App extends Component {
                 <h1 className="text-center">IXO BitCoin Price Graph</h1>
                 <Row>
                     <Col>
+                        <Button onClick={this.onPauseUnpause}>{this.state.paused?'Continue':'Pause'}</Button>
+                    </Col>
+                    <Col>
                         <Dropdown isOpen={this.state.dropdownOpen} toggle={this.toggle}>
                             <DropdownToggle>Rate({this.state.refresh_rate} seconds)</DropdownToggle>
                             <DropdownMenu>
@@ -180,7 +197,7 @@ class App extends Component {
                     <Col>
                         <Form>
                             <InputGroup>
-                                <Input type="text" ref={node => this.input = node}/>
+                                <Input type="text" placeholder={this.state.segments} ref={node => this.input = node}/>
                                 <InputGroupAddon addonType="append"><Button onClick={this.onSegmentChange}>Change Nr of Segments</Button></InputGroupAddon>
                             </InputGroup>
                         </Form>
