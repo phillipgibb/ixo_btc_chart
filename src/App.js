@@ -1,17 +1,25 @@
 import React, { Component } from 'react';
 import logo from './logo.png';
 import './App.css';
-// const LineChart = require('react-chartjs-2').Line;
-import {Line} from 'react-chartjs-2';
-let Client = require('coinbase').Client;
+import { Dropdown, DropdownToggle, DropdownMenu, DropdownItem } from 'reactstrap';
+import { Container, Row, Col } from 'reactstrap';
+import { Form, InputGroup, Input, InputGroupAddon, Button } from 'reactstrap';
 
+import {Line} from 'react-chartjs-2';
+
+let Client = require('coinbase').Client;
 
 class App extends Component {
 
     constructor(props) {
         super(props);
+        this.toggle = this.toggle.bind(this);
+        this.select = this.select.bind(this);
         this.state = {
             loading: 'initial',
+            dropdownOpen: false,
+            refresh_rate: 15,
+            segments: 10,
             spot_points: 0,
             chart_data:{
                 labels: [],
@@ -33,6 +41,34 @@ class App extends Component {
         this.chartObject = null;
     }
 
+    onSegmentChange = (e) => {
+         e.preventDefault();
+         const { value } = this.input;
+         if (value === '') {
+             return;
+         }
+         this.setState({segments: value});
+    };
+
+    toggle() {
+        this.setState(prevState => ({
+            dropdownOpen: !prevState.dropdownOpen
+        }));
+        return this.state.dropdownOpen;
+    }
+
+    select(event) {
+        this.setState({
+          dropdownOpen: !this.state.dropdownOpen,
+          refresh_rate: event.target.innerText
+        });
+        clearInterval(this.timerId);
+        this.timerId = setInterval(
+            () => this.getSpotPrice(),
+            this.state.refresh_rate * 1000
+        );
+    }
+
     componentWillMount(){
         this.setState({ loading: 'true' });
         this.coinbase_client = new Client({
@@ -50,13 +86,22 @@ class App extends Component {
                 const datasetsCopy = self.state.chart_data.datasets.slice(0);                
            
                 let nrOfspots = self.state.spot_points;
-                let labels = [];
-                for(let i = nrOfspots; i > 0; i--){
-                    labels.push(i*15);
+                let labels = self.state.chart_data.labels.slice(0);
+                
+                for(let i = 0; i < nrOfspots; i++){
+                    if(labels[i+1]){
+                        if(labels[i+1] === 'now'){
+                            labels[i] = 2*labels[i];
+                        }else{
+                            labels[i] = labels[i]+(labels[i] - labels[i+1]);
+                        }
+                    }else {
+                        labels[i] = self.state.refresh_rate;
+                    }
                 }
                 labels.push('now');
 
-                if (nrOfspots === 10) {
+                if (nrOfspots === self.state.segments) {
                     labels.shift();
                 } else {
                     nrOfspots = nrOfspots + 1;
@@ -64,7 +109,7 @@ class App extends Component {
                 
                 datasetsCopy.forEach((datasetcopy) => {
                     datasetcopy.data.push(price.data.amount);
-                    if(datasetcopy.data.length === 11){
+                    if(datasetcopy.data.length === self.state.segments+1){
                         datasetcopy.data.shift();
                     }
                 });
@@ -85,11 +130,12 @@ class App extends Component {
         });
     }
 
+
     componentDidMount() {
         this.getSpotPrice();
         this.timerId = setInterval(
             () => this.getSpotPrice(),
-            15000
+            this.state.refresh_rate * 1000
         );
     }
 
@@ -115,9 +161,35 @@ class App extends Component {
           <div className="App">
             <header className="App-header">
               <img src={logo} className="App-logo" alt="logo" />
-              <h1 className="App-title">IXO BitCoin Price Graph</h1>
             </header>
-              <Line data={this.state.chart_data}  width={600} height={250} ref='chart'/>
+            <Container>
+                <h1 className="text-center">IXO BitCoin Price Graph</h1>
+                <Row>
+                    <Col>
+                        <Dropdown isOpen={this.state.dropdownOpen} toggle={this.toggle}>
+                            <DropdownToggle>Rate({this.state.refresh_rate} seconds)</DropdownToggle>
+                            <DropdownMenu>
+                                <DropdownItem toggle={true} onClick={this.select}>5</DropdownItem>
+                                <DropdownItem toggle={true} onClick={this.select}>15</DropdownItem>
+                                <DropdownItem toggle={true} onClick={this.select}>30</DropdownItem>
+                                <DropdownItem toggle={true} onClick={this.select}>45</DropdownItem>
+                                <DropdownItem toggle={true} onClick={this.select}>60</DropdownItem>
+                            </DropdownMenu>
+                        </Dropdown>
+                    </Col>
+                    <Col>
+                        <Form>
+                            <InputGroup>
+                                <Input type="text" ref={node => this.input = node}/>
+                                <InputGroupAddon addonType="append"><Button onClick={this.onSegmentChange}>Change Nr of Segments</Button></InputGroupAddon>
+                            </InputGroup>
+                        </Form>
+                    </Col>
+                    </Row>
+                    <Row>
+                        <Line data={this.state.chart_data}  width={600} height={250} ref='chart'/>
+                    </Row>
+              </Container>
           </div>
         );
     }
