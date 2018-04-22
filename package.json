@@ -4,9 +4,12 @@
   "homepage": "http://phillipgibb.github.io/ixo_btc_chart/",
   "private": true,
   "dependencies": {
+    "auth0-js": "^9.4.2",
     "chart.js": "^2.7.2",
-    "react": "^16.3.2",
-    "react-dom": "^16.3.2",
+    "coinbase": "^2.0.8",
+    "react": "^16.2.3",
+    "react-chartjs-2": "^2.7.0",
+    "react-dom": "^16.2.3",
     "react-scripts": "1.1.4"
   },
   "scripts": {
